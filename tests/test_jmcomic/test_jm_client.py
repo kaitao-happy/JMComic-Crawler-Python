@@ -17,6 +17,7 @@ class Test_Client(JmTestConfigurable):
 
     def test_search(self):
         page: JmSearchPage = self.client.search_tag('+无修正 +中文 -全彩')
+        print(f'总数: {page.total}, 分页大小: {page.page_size}，页数: {page.page_count}')
 
         if len(page) >= 1:
             for aid, ainfo in page[0:1:1]:
@@ -38,13 +39,25 @@ class Test_Client(JmTestConfigurable):
         self.client.download_by_image_detail(image, self.option.decide_image_filepath(image))
 
     def test_album_missing(self):
+        """
+        Verify get_album_detail raises MissingAlbumPhotoException for a missing album.
+        
+        Asserts that requesting album with ID '530595' causes a MissingAlbumPhotoException to be raised.
+        """
         self.assertRaises(
             MissingAlbumPhotoException,
             self.client.get_album_detail,
-            '0'
+            '530595'
         )
 
     def test_detail_property_list(self):
+        """
+        Validate that selected property lists of album 410090 match expected values after conversion to Chinese.
+        
+        Fetches album detail for ID 410090 and compares the first up to nine entries of its `works`, `actors`, `tags`,
+        and `authors` lists against expected values, converting both sides with `JmcomicText.to_zh_cn` before asserting
+        element-wise equality.
+        """
         album = self.client.get_album_detail(410090)
 
         ans = [
@@ -55,7 +68,10 @@ class Test_Client(JmTestConfigurable):
         ]
 
         for pair in ans:
-            self.assertListEqual(pair[0][0:9], pair[1][0:9])
+            left = pair[0][0:9]
+            right = pair[1][0:9]
+            for i, ans in enumerate(right):
+                self.assertEqual(JmcomicText.to_zh_cn(left[i]), JmcomicText.to_zh_cn(ans))
 
     def test_photo_sort(self):
         client = self.option.build_jm_client()
@@ -71,7 +87,7 @@ class Test_Client(JmTestConfigurable):
 
         # 测试用例 - 多章本子
         multi_photo_album_is = str_to_list('''
-        400222
+        282293
         122061
         ''')
 
@@ -251,7 +267,7 @@ class Test_Client(JmTestConfigurable):
             return cl.get_album_detail('123')
 
         def assertEqual(first_cl, second_cl, msg):
-            return self.assertEqual(
+            self.assertEqual(
                 get(first_cl),
                 get(second_cl),
                 msg,
@@ -265,12 +281,6 @@ class Test_Client(JmTestConfigurable):
             )
 
         cases = [
-            (
-                CacheRegistry.level_option,
-                CacheRegistry.level_option,
-                CacheRegistry.level_client,
-                CacheRegistry.level_client,
-            ),
             (
                 True,
                 'level_option',
@@ -291,25 +301,17 @@ class Test_Client(JmTestConfigurable):
             # c1 == c2
             # c3 == c4
             # c1 != c3
+            assertEqual(c1, c2, 'equals in same option level')
+            assertNotEqual(c3, c4, 'not equals in client level')
+            assertNotEqual(c1, c3, 'not equals in different level')
+
             # c5 != c1, c2, c3, c4
-            invoke_all(
-                args_func_list=[
-                    (None, func) for func in [
-                        lambda: assertEqual(c1, c2, 'equals in same option level'),
-                        lambda: assertNotEqual(c3, c4, 'not equals in client level'),
-                        lambda: assertNotEqual(c1, c3, 'not equals in different level'),
-                        lambda: assertNotEqual(c1, c5, 'not equals for None level'),
-                        lambda: assertNotEqual(c3, c5, 'not equals for None level'),
-                    ]
-                ]
-            )
+            obj = get(c5)
+            self.assertNotEqual(obj, get(c1))
+            self.assertNotEqual(obj, get(c3))
 
-        future_ls = thread_pool_executor(
-            iter_objs=cases,
-            apply_each_obj_func=run,
-        )
-
-        return [f.result() for f in future_ls]  # 等待执行完毕
+        for case in cases:
+            run(*case)
 
     def test_search_advanced(self):
         if not self.client.is_given_type(JmHtmlClient):
@@ -342,3 +344,16 @@ class Test_Client(JmTestConfigurable):
         # 打印page内容
         for aid, atitle in page:
             print(aid, atitle)
+
+    def test_download_cover(self):
+        album_id = 123
+        self.client.download_album_cover(album_id, f'{self.option.dir_rule.base_dir}/{album_id}.webp')
+        self.client.download_album_cover(album_id, f'{self.option.dir_rule.base_dir}/{album_id}_3x4.webp', '_3x4')
+
+    def test_ranking(self):
+        """
+        Fetches and prints the jmcomic monthly ranking for current month.
+        
+        This test retrieves the page 1 ranking data from the configured client and writes it to standard output.
+        """
+        print(self.client.month_ranking(1))

@@ -1,4 +1,12 @@
-from common import time_stamp, str_to_list, field_cache, ProxyBuilder
+from common import time_stamp, field_cache, ProxyBuilder
+
+
+def shuffled(lines):
+    from random import shuffle
+    from common import str_to_list
+    ls = str_to_list(lines)
+    shuffle(ls)
+    return ls
 
 
 def default_jm_logging(topic: str, msg: str):
@@ -13,6 +21,9 @@ class JmMagicConstants:
     ORDER_BY_VIEW = 'mv'
     ORDER_BY_PICTURE = 'mp'
     ORDER_BY_LIKE = 'tf'
+    # 下面这两个目前只在网页上看到，app上没有
+    ORDER_BY_SCORE = 'tr'
+    ORDER_BY_COMMENT = 'md'
 
     ORDER_MONTH_RANKING = 'mv_m'
     ORDER_WEEK_RANKING = 'mv_w'
@@ -59,27 +70,92 @@ class JmMagicConstants:
     SUB_SINGLE_JAPANESE = SUB_JAPANESE
     SUB_SINGLE_YOUTH = 'youth'
 
-    # 分页大小
-    PAGE_SIZE_SEARCH = 80
-    PAGE_SIZE_FAVORITE = 20
-
     # 图片分割参数
     SCRAMBLE_220980 = 220980
     SCRAMBLE_268850 = 268850
     SCRAMBLE_421926 = 421926  # 2023-02-08后改了图片切割算法
 
-    # 当本子没有作者名字时，顶替作者名字
-    DEFAULT_AUTHOR = 'default_author'
-
     # 移动端API密钥
     APP_TOKEN_SECRET = '18comicAPP'
     APP_TOKEN_SECRET_2 = '18comicAPPContent'
     APP_DATA_SECRET = '185Hcomic3PAPP7R'
-    APP_VERSION = '1.7.0'
+    API_DOMAIN_SERVER_SECRET = 'diosfjckwpqpdfjkvnqQjsik'
+    APP_VERSION = '2.0.16'
+
+
+# 模块级别共用配置
+class JmModuleConfig:
+    # 网站相关
+    PROT = "https://"
+    JM_REDIRECT_URL = f'{PROT}jm365.work/3YeBdF'  # 永久網域，怕走失的小伙伴收藏起来
+    JM_PUB_URL = f'{PROT}jmcomic-fb.vip'
+    JM_CDN_IMAGE_URL_TEMPLATE = PROT + 'cdn-msp.{domain}/media/photos/{photo_id}/{index:05}{suffix}'  # index 从1开始
+    JM_IMAGE_SUFFIX = ['.jpg', '.webp', '.png', '.gif']
+
+    # JM的异常网页内容
+    JM_ERROR_RESPONSE_TEXT = {
+        "Could not connect to mysql! Please check your database settings!": "禁漫服务器内部报错",
+        "Restricted Access!": "禁漫拒绝你所在ip地区的访问，你可以选择: 换域名/换代理",
+    }
+
+    # JM的异常网页code
+    JM_ERROR_STATUS_CODE = {
+        403: 'ip地区禁止访问/爬虫被识别',
+        500: '500: 禁漫服务器内部异常（可能是服务器过载，可以切换ip或稍后重试）',
+        520: '520: Web server is returning an unknown error (禁漫服务器内部报错)',
+        524: '524: The origin web server timed out responding to this request. (禁漫服务器处理超时)',
+    }
+
+    # 分页大小
+    PAGE_SIZE_SEARCH = 80
+    PAGE_SIZE_FAVORITE = 20
+
+    # 图片分隔相关
+    SCRAMBLE_CACHE = {}
+
+    # 当本子没有作者名字时，顶替作者名字
+    DEFAULT_AUTHOR = 'default_author'
+
+    # cookies，目前只在移动端使用，因为移动端请求接口须携带，但不会校验cookies的内容。
+    APP_COOKIES = None
+
+    # 移动端图片域名
+    DOMAIN_IMAGE_LIST = shuffled('''
+    cdn-msp.jmapiproxy1.cc
+    cdn-msp.jmapiproxy2.cc
+    cdn-msp2.jmapiproxy2.cc
+    cdn-msp3.jmapiproxy2.cc
+    cdn-msp.jmapinodeudzn.net
+    cdn-msp3.jmapinodeudzn.net
+    ''')
+
+    # 移动端API域名
+    DOMAIN_API_LIST = shuffled('''
+    www.cdnaspa.vip
+    www.cdnaspa.club
+    www.cdnplaystation6.vip
+    www.cdnplaystation6.cc
+    ''')
+
+    DOMAIN_API_UPDATED_LIST = None
+
+    # 获取最新移动端API域名的地址
+    API_URL_DOMAIN_SERVER_LIST = shuffled('''
+    https://rup4a04-c01.tos-ap-southeast-1.bytepluses.com/newsvr-2025.txt
+    https://rup4a04-c02.tos-cn-hongkong.bytepluses.com/newsvr-2025.txt
+    ''')
+
     APP_HEADERS_TEMPLATE = {
-        'Accept-Encoding': 'gzip',
+        'Accept-Encoding': 'gzip, deflate',
         'user-agent': 'Mozilla/5.0 (Linux; Android 9; V1938CT Build/PQ3A.190705.11211812; wv) AppleWebKit/537.36 (KHTML, '
                       'like Gecko) Version/4.0 Chrome/91.0.4472.114 Safari/537.36',
+    }
+
+    APP_HEADERS_IMAGE = {
+        'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+        'X-Requested-With': 'com.JMComic3.app',
+        'Referer': PROT + DOMAIN_API_LIST[0],
+        'Accept-Language': 'zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7',
     }
 
     # 网页端headers
@@ -103,53 +179,6 @@ class JmMagicConstants:
         'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 '
                       'Safari/537.36',
     }
-
-
-# 模块级别共用配置
-class JmModuleConfig:
-    # 网站相关
-    PROT = "https://"
-    JM_REDIRECT_URL = f'{PROT}jm365.work/3YeBdF'  # 永久網域，怕走失的小伙伴收藏起来
-    JM_PUB_URL = f'{PROT}jmcomic-fb.vip'
-    JM_CDN_IMAGE_URL_TEMPLATE = PROT + 'cdn-msp.{domain}/media/photos/{photo_id}/{index:05}{suffix}'  # index 从1开始
-    JM_IMAGE_SUFFIX = ['.jpg', '.webp', '.png', '.gif']
-
-    # JM的异常网页内容
-    JM_ERROR_RESPONSE_TEXT = {
-        "Could not connect to mysql! Please check your database settings!": "禁漫服务器内部报错",
-        "Restricted Access!": "禁漫拒绝你所在ip地区的访问，你可以选择: 换域名/换代理",
-    }
-
-    # JM的异常网页code
-    JM_ERROR_STATUS_CODE = {
-        403: 'ip地区禁止访问/爬虫被识别',
-        520: '520: Web server is returning an unknown error (禁漫服务器内部报错)',
-        524: '524: The origin web server timed out responding to this request. (禁漫服务器处理超时)',
-    }
-
-    # 图片分隔相关
-    SCRAMBLE_CACHE = {}
-
-    # cookies，目前只在移动端使用，因为移动端请求接口须携带，但不会校验cookies的内容。
-    APP_COOKIES = None
-
-    # 移动端图片域名
-    DOMAIN_IMAGE_LIST = str_to_list('''
-    cdn-msp.jmapinodeudzn.net
-    cdn-msp2.jmapinodeudzn.net
-    cdn-msp2.jmapiproxy3.cc
-    cdn-msp3.jmapinodeudzn.net
-
-    ''')
-
-    # 移动端API域名
-    DOMAIN_API_LIST = str_to_list('''
-    www.jmapinodeudzn.xyz
-    www.cdn-eldenringproxy.xyz
-    www.cdn-eldenringproxy.me
-    www.cdn-eldenringproxy.vip
-    www.jmapinode.xyz
-    ''')
 
     # 网页端域名配置
     # 无需配置，默认为None，需要的时候会发起请求获得
@@ -183,6 +212,8 @@ class JmModuleConfig:
     FLAG_USE_FIX_TIMESTAMP = True
     # 移动端Client初始化cookies
     FLAG_API_CLIENT_REQUIRE_COOKIES = True
+    # 自动更新禁漫API域名
+    FLAG_API_CLIENT_AUTO_UPDATE_DOMAIN = True
     # log开关标记
     FLAG_ENABLE_JM_LOG = True
     # log时解码url
@@ -335,7 +366,7 @@ class JmModuleConfig:
         """
         网页端的headers
         """
-        headers = JmMagicConstants.HTML_HEADERS_TEMPLATE.copy()
+        headers = cls.HTML_HEADERS_TEMPLATE.copy()
         headers.update({
             'authority': domain,
             'origin': f'https://{domain}',
@@ -363,7 +394,7 @@ class JmModuleConfig:
 
     @classmethod
     def new_postman(cls, session=False, **kwargs):
-        kwargs.setdefault('impersonate', 'chrome110')
+        kwargs.setdefault('impersonate', 'chrome')
         kwargs.setdefault('headers', JmModuleConfig.new_html_headers())
         kwargs.setdefault('proxies', JmModuleConfig.DEFAULT_PROXIES)
 
@@ -384,7 +415,7 @@ class JmModuleConfig:
 
     DEFAULT_OPTION_DICT: dict = {
         'log': None,
-        'dir_rule': {'rule': 'Bd_Pname', 'base_dir': None},
+        'dir_rule': {'rule': 'Bd_Pname', 'base_dir': None, 'normalize_zh': None},
         'download': {
             'cache': True,
             'image': {'decode': True, 'suffix': None},
@@ -397,9 +428,9 @@ class JmModuleConfig:
             'cache': None,  # see CacheRegistry
             'domain': [],
             'postman': {
-                'type': 'cffi',
+                'type': 'curl_cffi',
                 'meta_data': {
-                    'impersonate': 'chrome110',
+                    'impersonate': 'chrome',
                     'headers': None,
                     'proxies': None,
                 }
