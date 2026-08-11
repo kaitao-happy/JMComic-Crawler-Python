@@ -53,9 +53,10 @@
 
 - 登录
 - 搜索本子（支持所有搜索项）
-- 图片下载解码
+- 获取本子评论（包括回评、剧透标识）
 - 分类/排行榜
-- 本子/章节详情
+- 获取本子/章节详情
+- 图片下载解码
 - 个人收藏夹
 - 接口加解密（APP的接口）
 
@@ -121,13 +122,12 @@ jmcomic.download_album(123, option)
 ```
 
 ### 3. 使用命令行
+> [!TIP]
 > 如果只想下载本子，使用命令行会比上述方式更加简单直接
 > 
 > 例如，在windows上，直接按下 win+R 键，输入`jmcomic xxx`就可以下载本子。
 
-示例：
-
-下载本子123的命令
+示例：下载本子123的命令
 
 ```sh
 jmcomic 123
@@ -139,22 +139,28 @@ jmcomic 123 p456
 
 命令行模式也支持自定义option，你可以使用环境变量或者命令行参数：
 
-a. 通过命令行--option参数指定option文件路径
+a. 通过命令行 --option 参数指定option文件路径
 
 ```sh
 jmcomic 123 --option="D:/a.yml"
 ```
 
-b. 配置环境变量 `JM_OPTION_PATH` 为option文件路径（推荐）
+b. 命令行不改，而是配置环境变量 `JM_OPTION_PATH` 为option文件路径（推荐）
 
+> [!TIP]
 > 请自行google配置环境变量的方式，或使用powershell命令:  `setx JM_OPTION_PATH "D:/a.yml"` 重启后生效
 
-```sh
-jmcomic 123
-```
+
+另外，`jmcomic` 还提供了一个美观的进度条能力，默认是开启的，但是需要你手动安装一个额外依赖 `pip install rich`。效果如下：
+
+![jmcomic 命令行下载进度](./assets/docs/sources/images/download_progress_terminal.png)
+
+详细开启方法参考文档：[启用美观的下载进度条](assets/docs/sources/tutorial/15_download_progress.md)
+
 
 ### 4. 查看本子详情（jmv 命令）
 
+> [!NOTE]
 > `jmv` 命令用于快速查看本子详情，不做下载。
 > 
 > **适用场景**：在某些网站上看到一串*神秘车号*，想快速看看具体是啥本子。此时只需copy原文本，按下 win+R，输入`jmv [粘贴内容]`即可
@@ -221,15 +227,16 @@ jmv 350234 -y
 
 - **绕过Cloudflare的反爬虫**
 - **实现禁漫APP接口最新的加解密算法 (1.6.3)**
+- 支持**Async**和**Sync**两套 API
 - 用法多样：
 
   - GitHub
     Actions：网页上直接输入本子id就能下载（[教程：使用GitHub Actions下载禁漫本子](./assets/docs/sources/tutorial/1_github_actions.md)）
   - 命令行：无需写Python代码，简单易用（[教程：使用命令行下载禁漫本子](./assets/docs/sources/tutorial/2_command_line.md)）
   - Python代码：最本质、最强大的使用方式，需要你有一定的python编程基础
-- **支持 Async 和 Sync 两套 API**
 - 支持**网页端**和**移动端**两种客户端实现，可通过配置切换（**移动端不限ip兼容性好，网页端限制ip地区但效率高**）
 - 支持**自动重试和域名切换**机制
+- 支持按下载任务维度结构化收集日志
 - **可配置性强**
 
   - 不配置也能使用，十分方便
@@ -238,7 +245,7 @@ jmv 350234 -y
     等
 - **可扩展性强**
 
-  - 支持自定义本子/章节/图片下载前后的回调函数
+  - 支持自定义本子/章节/图片下载前后事件的回调函数
   - 支持自定义类：`Downloader（负责调度）` `Option（负责配置）` `Client（负责请求）` `实体类`等
   - 支持自定义日志、异常监听器
   - **支持Plugin插件，可以方便地扩展功能，以及使用别人的插件，目前核心内置插件有**：
